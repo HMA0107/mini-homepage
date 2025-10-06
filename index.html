@@ -1,0 +1,215 @@
+html
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESP8266 Temperatur - Mini Homepage</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;color:#e6eef6;background:linear-gradient(180deg,var(--bg),#071028);margin:0;padding:24px;}
+    .wrap{max-width:760px;margin:0 auto}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.7);}
+    .row{display:flex;gap:8px;align-items:center}
+    label{font-size:13px;color:var(--muted)}
+    select,input{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    button{padding:8px 12px;border-radius:10px;border:none;background:var(--accent);color:#042027;font-weight:600;cursor:pointer}
+    .temp{font-size:56px;font-weight:700;margin:10px 0}
+    .meta{color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .small{font-size:13px;padding:6px 8px}
+    footer{margin-top:16px;color:var(--muted);font-size:13px}
+    .devices-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+    .device-item{display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .pill{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-size:13px}
+    .error{color:#ffb4b4}
+    @media (max-width:520px){.row{flex-direction:column;align-items:stretch}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="card" style="padding:12px 14px">
+        <h1>ESP8266 — Temperaturanzeige</h1>
+        <div class="meta">Wähle dein Gerät, hole Temperatur und gib sie (optional) als Sprache aus.</div>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between">
+        <div style="flex:1">
+          <label for="deviceSelect">Gerät</label>
+          <select id="deviceSelect"></select>
+        </div>
+        <div style="min-width:150px">
+          <label for="refresh">Aktualisierung</label>
+          <select id="refresh">
+            <option value="0">Manuell</option>
+            <option value="5000">5 Sekunden</option>
+            <option value="15000">15 Sekunden</option>
+            <option value="60000">1 Minute</option>
+          </select>
+        </div>
+        <div style="min-width:120px">
+          <label>&nbsp;</label>
+          <div class="controls">
+            <button id="fetchBtn" class="small">Hole Temperatur</button>
+            <button id="speakBtn" class="small">Sprechen</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="temp" id="tempValue">-- °C</div>
+        <div class="meta">Letzte Aktualisierung: <span id="lastUpdate">—</span></div>
+        <div id="status" class="meta"></div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+
+      <div>
+        <h3 style="margin:0 0 8px 0">Geräte verwalten</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="newName" placeholder="Name (z.B. Wohnzimmer)" />
+          <input id="newIp" placeholder="IP oder Host (z.B. 192.168.1.42)" />
+          <button id="addDevice">Hinzufügen</button>
+        </div>
+
+        <div class="devices-list" id="devicesList"></div>
+
+        <div style="margin-top:10px;color:var(--muted);font-size:13px">
+          Hinweis: Der ESP muss eine HTTP-API bereitstellen (z.B. /temp oder /temperature) und CORS erlauben, sonst funktioniert das Browser-Fetch nicht. (Alternative: Seite direkt auf dem ESP hosten.)
+        </div>
+      </div>
+    </section>
+
+    <footer class="meta">Simple HTML & JavaScript — kompatibel mit ESP8266.</footer>
+  </div>
+
+  <script>
+    // --- Konfiguration: Endpunktnamen, die versucht werden ---
+    const triedPaths = ['/temp', '/temperature', '/api/temp', '/sensor'];
+
+    // --- Helpers ---
+    const $ = id => document.getElementById(id);
+    let pollTimer = null;
+
+    // Lade Geräte aus localStorage
+    function loadDevices(){
+      const raw = localStorage.getItem('esp_devices') || '[]';
+      try{ return JSON.parse(raw);}catch(e){return []}
+    }
+    function saveDevices(list){ localStorage.setItem('esp_devices', JSON.stringify(list)); }
+
+    function renderDeviceOptions(){
+      const sel = $('deviceSelect'); sel.innerHTML='';
+      const devices = loadDevices();
+      devices.forEach((d, idx)=>{
+        const opt = document.createElement('option'); opt.value = idx; opt.textContent = d.name + ' — ' + d.host; sel.appendChild(opt);
+      });
+      renderDeviceList();
+    }
+
+    function renderDeviceList(){
+      const list = $('devicesList'); list.innerHTML='';
+      const devices = loadDevices();
+      devices.forEach((d, idx)=>{
+        const item = document.createElement('div'); item.className='device-item';
+        item.innerHTML = `<div><span class="pill">${d.name}</span> <span style="margin-left:8px">${d.host}</span></div>` +
+                         `<div><button data-idx="${idx}" class="del small">Löschen</button></div>`;
+        list.appendChild(item);
+      });
+      // delete handlers
+      list.querySelectorAll('.del').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const idx = Number(btn.dataset.idx);
+          const devices = loadDevices(); devices.splice(idx,1); saveDevices(devices); renderDeviceOptions();
+        });
+      });
+    }
+
+    async function fetchTemperatureFrom(host){
+      // Versuche mehrere Pfade
+      for(const p of triedPaths){
+        const url = (host.startsWith('http')?host:`http://${host}`) + p;
+        try{
+          const res = await fetch(url, {cache:'no-store'});
+          if(!res.ok) continue;
+          const txt = await res.text();
+          // Versuche JSON
+          try{
+            const j = JSON.parse(txt);
+            // Gängige Felder
+            if(j.temp !== undefined) return Number(j.temp);
+            if(j.temperature !== undefined) return Number(j.temperature);
+            if(j.t !== undefined) return Number(j.t);
+          }catch(e){
+            // Plain text vielleicht nur eine Zahl
+            const only = txt.trim().match(/-?\d+(?:[.,]\d+)?/);
+            if(only) return Number(only[0].replace(',', '.'));
+          }
+        }catch(err){
+          // Netzwerkfehler - ignorieren und nächsten Pfad versuchen
+        }
+      }
+      throw new Error('Keine Temperaturantwort erhalten');
+    }
+
+    async function updateTemperature(){
+      const status = $('status'); status.textContent='';
+      const sel = $('deviceSelect');
+      const idx = sel.value;
+      const devices = loadDevices();
+      if(devices.length===0){ status.innerHTML='<span class="error">Keine Geräte konfiguriert.</span>'; return; }
+      const device = devices[idx];
+      $('fetchBtn').disabled = true;
+      try{
+        const t = await fetchTemperatureFrom(device.host);
+        $('tempValue').textContent = (Number.isFinite(t) ? t.toFixed(1) : t) + ' °C';
+        $('lastUpdate').textContent = new Date().toLocaleString();
+        status.textContent = 'Erfolgreich von ' + device.name;
+      }catch(e){
+        status.innerHTML = '<span class="error">Fehler: '+ e.message +'</span>';
+      }finally{
+        $('fetchBtn').disabled = false;
+      }
+    }
+
+    function startAutoPoll(){
+      const ms = Number($('refresh').value);
+      if(pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      if(ms>0){ pollTimer = setInterval(updateTemperature, ms); }
+    }
+
+    // Text-to-speech
+    function speakTemperature(){
+      const text = $('tempValue').textContent.replace('°C', 'Grad Celsius');
+      if(!('speechSynthesis' in window)){ alert('Text-to-Speech nicht verfügbar.'); return; }
+      const utter = new SpeechSynthesisUtterance(text + ' — gemessen um ' + $('lastUpdate').textContent);
+      window.speechSynthesis.speak(utter);
+    }
+
+    // Event handlers
+    document.addEventListener('DOMContentLoaded', ()=>{
+      renderDeviceOptions();
+      $('addDevice').addEventListener('click', ()=>{
+        const name = $('newName').value.trim(); const host = $('newIp').value.trim();
+        if(!name || !host){ alert('Bitte Name und IP/Host eingeben.'); return; }
+        const devices = loadDevices(); devices.push({name, host}); saveDevices(devices); $('newName').value=''; $('newIp').value=''; renderDeviceOptions();
+      });
+      $('fetchBtn').addEventListener('click', ()=> updateTemperature());
+      $('speakBtn').addEventListener('click', speakTemperature);
+      $('refresh').addEventListener('change', ()=>{ startAutoPoll(); });
+      $('deviceSelect').addEventListener('change', ()=>{ /* optional: auto-fetch when switching */ });
+
+      // Vorbelegung: falls keine Geräte, ein Platzhalter-Gerät eintragen
+      if(loadDevices().length===0){
+        const sample = [{name:'ESP Wohnzimmer', host:'192.168.1.42'}]; saveDevices(sample); renderDeviceOptions();
+      }
+    });
+  </script>
+</body>
+</html>
