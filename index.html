@@ -3,253 +3,353 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ESP8266 Mini,,Homepage</title>
+  <title>ESP8266 Multi-Sensor Steuerung</title>
   <style>
-:root {
-  --bg: #eaf3fb;        /* hellblauer Hintergrund */
-  --card: #ffffff;       /* weiße Karten */
-  --accent: #06b6d4;     /* Türkis bleibt gleich */
-  --muted: #334155;      /* etwas kühleres Grau */
-}
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(180deg, #778899, #e5e7eb);
+      margin: 0;
+      padding: 24px;
+      color: #111827;
+    }
+    .wrap { max-width: 760px; margin: auto; }
 
-    * { box-sizing: border-box; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .meta { color: #6b7280; font-size: 13px; }
 
-   body {
-  font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
-  color: #0f172a;
-  background: linear-gradient(180deg, var(--bg), #dbeafe);
-  margin: 0;
-  padding: 24px;
-}
-    .wrap { max-width: 760px; margin: 0 auto; }
-
-    header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-    h1 { font-size: 20px; margin: 0; }
-
-.card {
-  background: linear-gradient(180deg, #ffffff, #f1f5f9);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  padding: 16px;
-}
-
-    .row { display: flex; gap: 8px; align-items: center; }
-    label { font-size: 13px; color: var(--muted); }
+    .card {
+      background: linear-gradient(180deg, #fff, #f3f4f6);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+    }
 
     select, input {
-      padding: 8px 10px;
-      border-radius: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
       border: 1px solid #d1d5db;
-      background: #fff;
-      color: inherit;
+      background: #e0f2f8;
+      color: #111;
     }
 
-    button {
-      padding: 8px 12px;
-      border-radius: 10px;
+    .toggle {
+      min-width: 60px;
+      padding: 4px 8px;
+      border-radius: 6px;
       border: none;
-      background: var(--accent);
-      color: #042027;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    button:hover { opacity: 0.9; }
-
-    .temp { font-size: 56px; font-weight: 700; margin: 10px 0; }
-    .meta { color: var(--muted); font-size: 13px; }
-
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
-    .small { font-size: 13px; padding: 6px 8px; }
-
-    footer { margin-top: 16px; color: var(--muted); font-size: 13px; }
-
-    .devices-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .device-item { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-
-    .pill {
-      background: #f3f4f6;
-      padding: 6px 8px;
-      border-radius: 999px;
+      background: #d1d5db;
+      color: #111;
       font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .toggle.active {
+      background: #06b6d4;
+      color: white;
+      box-shadow: 0 0 6px rgba(0,150,200,0.4);
+    }
+    .toggle:hover { transform: scale(1.05); }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
     }
 
-    .error { color: #dc2626; }
-
-    @media (max-width:520px) {
-      .row { flex-direction: column; align-items: stretch; }
+    .control-title-inline {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0284c7;
+      min-width: 120px;
     }
+
+    .value-pill {
+      background: #e0f7fa;
+      border: 1px solid #06b6d4;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 600;
+      color: #065f73;
+      min-width: 70px;
+      text-align: center;
+      display: inline-block;
+    }
+
+    footer { margin-top: 12px; color: #6b7280; font-size: 12px; }
+    .devices-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .device-item { display: flex; justify-content: space-between; align-items: center; }
+    .small { font-size: 13px; padding: 4px 6px; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="card" style="padding:12px 14px">
-        <h1>ESP8266 — Temperaturanzeige</h1>
-        <div class="meta">Wähle dein Gerät, hole Temperatur und gib sie (optional) als Sprache aus.</div>
-      </div>
+    <header class="card">
+      <h1>ESP8266 Multi-Sensor Steuerung</h1>
+      <div class="meta">Wähle dein Gerät und überwache mehrere Sensoren gleichzeitig.</div>
     </header>
 
     <section class="card">
-      <div class="row" style="justify-content:space-between">
-        <div style="flex:1">
-          <label for="deviceSelect">Gerät</label>
-          <select id="deviceSelect"></select>
-        </div>
-        <div style="min-width:150px">
-          <label for="refresh">Aktualisierung</label>
-          <select id="refresh">
-            <option value="0">Manuell</option>
-            <option value="5000">5 Sekunden</option>
-            <option value="15000">15 Sekunden</option>
-            <option value="60000">1 Minute</option>
-          </select>
-        </div>
-        <div style="min-width:120px">
-          <label>&nbsp;</label>
-          <div class="controls">
-            <button id="fetchBtn" class="small">Hole Temperatur</button>
-            <button id="speakBtn" class="small">Sprechen</button>
-          </div>
-        </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <label>Gerät:</label>
+        <select id="deviceSelect"></select>
+        <label>Aktualisierung:</label>
+        <select id="refresh">
+          <option value="0">Manuell</option>
+          <option value="5000">5 Sekunden</option>
+          <option value="10000">10 Sekunden</option>
+          <option value="30000">30 Sekunden</option>
+        </select>
+        <button id="fetchAllBtn" class="small">Jetzt abrufen</button>
       </div>
+      <div id="status" class="meta" style="margin-top:6px"></div>
 
-      <div style="margin-top:12px">
-        <div class="temp" id="tempValue">-- °C</div>
-        <div class="meta">Letzte Aktualisierung: <span id="lastUpdate">—</span></div>
-        <div id="status" class="meta"></div>
-      </div>
+      <hr>
 
-      <hr style="margin:12px 0;border:none;border-top:1px solid #e5e7eb">
-
-      <div>
-        <h3 style="margin:0 0 8px 0">Geräte verwalten</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input id="newName" placeholder="Name (z.B. Wohnzimmer)" />
-          <input id="newIp" placeholder="IP oder Host (z.B. 192.168.1.42)" />
-          <button id="addDevice">Hinzufügen</button>
-        </div>
-
-        <div class="devices-list" id="devicesList"></div>
-
-        <div style="margin-top:10px;color:var(--muted);font-size:13px">
-          Hinweis: Der ESP muss eine HTTP-API bereitstellen (z.B. /temp oder /temperature) und CORS erlauben, sonst funktioniert das Browser-Fetch nicht.  
-          (Alternative: Seite direkt auf dem ESP hosten.)
-        </div>
-      </div>
+      <!-- Drei Sensorspalten -->
+      <div id="sensorsArea">
+	  <div class="control-row">
+		<span class="control-title-inline">Sensor 1</span>
+		<button id="onBtn1" class="toggle">An</button>
+		<button id="offBtn1" class="toggle">Aus</button>
+		<span id="deviceValue1" class="value-pill">-- °C</span>
+	  </div>
+	  <div class="control-row">
+		<span class="control-title-inline">Sensor 2</span>
+		<button id="onBtn2" class="toggle">An</button>
+		<button id="offBtn2" class="toggle">Aus</button>
+		<span id="deviceValue2" class="value-pill">--</span>
+	  </div>
+	  <div class="control-row">
+		<span class="control-title-inline">Sensor 3</span>
+		<button id="onBtn3" class="toggle">An</button>
+		<button id="offBtn3" class="toggle">Aus</button>
+		<span id="deviceValue3" class="value-pill">--</span>
+	  </div>
+	  <div class="control-row">
+		<span class="control-title-inline">Sensor 4</span>
+		<button id="onBtn4" class="toggle">An</button>
+		<button id="offBtn4" class="toggle">Aus</button>
+		<span id="deviceValue4" class="value-pill">--</span>
+	  </div>
+	  <div class="control-row">
+		<span class="control-title-inline">Sensor 5</span>
+		<button id="onBtn5" class="toggle">An</button>
+		<button id="offBtn5" class="toggle">Aus</button>
+		<span id="deviceValue5" class="value-pill">--</span>
+	  </div>
+	</div>
     </section>
 
-    <footer class="meta">Simple HTML & JavaScript — kompatibel mit ESP8266.</footer>
+    <section class="card">
+      <h3 style="margin:0 0 8px;">Geräteverwaltung</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="newName" placeholder="Name (z.B. Wohnzimmer)">
+        <input id="newIp" placeholder="IP oder Host (z.B. 192.168.1.42)">
+        <button id="addDevice">Hinzufügen</button>
+      </div>
+      <div id="devicesList" class="devices-list"></div>
+    </section>
+
+    <footer>ESP8266 Multi-Sensor Websteuerung © 2025</footer>
   </div>
 
-  <script>
-    const triedPaths = ['/temp', '/temperature', '/api/temp', '/sensor'];
-    const $ = id => document.getElementById(id);
-    let pollTimer = null;
-
-    function loadDevices(){
-      const raw = localStorage.getItem('esp_devices') || '[]';
-      try{ return JSON.parse(raw);}catch(e){return []}
-    }
-    function saveDevices(list){ localStorage.setItem('esp_devices', JSON.stringify(list)); }
-
-    function renderDeviceOptions(){
-      const sel = $('deviceSelect'); sel.innerHTML='';
-      const devices = loadDevices();
-      devices.forEach((d, idx)=>{
-        const opt = document.createElement('option'); opt.value = idx; opt.textContent = d.name + ' — ' + d.host; sel.appendChild(opt);
-      });
-      renderDeviceList();
-    }
-
-    function renderDeviceList(){
-      const list = $('devicesList'); list.innerHTML='';
-      const devices = loadDevices();
-      devices.forEach((d, idx)=>{
-        const item = document.createElement('div'); item.className='device-item';
-        item.innerHTML = `<div><span class="pill">${d.name}</span> <span style="margin-left:8px">${d.host}</span></div>` +
-                         `<div><button data-idx="${idx}" class="del small">Löschen</button></div>`;
-        list.appendChild(item);
-      });
-      list.querySelectorAll('.del').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const idx = Number(btn.dataset.idx);
-          const devices = loadDevices(); devices.splice(idx,1); saveDevices(devices); renderDeviceOptions();
-        });
-      });
-    }
-
-    async function fetchTemperatureFrom(host){
-      for(const p of triedPaths){
-        const url = (host.startsWith('http')?host:`http://${host}`) + p;
-        try{
-          const res = await fetch(url, {cache:'no-store'});
-          if(!res.ok) continue;
-          const txt = await res.text();
-          try{
-            const j = JSON.parse(txt);
-            if(j.temp !== undefined) return Number(j.temp);
-            if(j.temperature !== undefined) return Number(j.temperature);
-            if(j.t !== undefined) return Number(j.t);
-          }catch(e){
-            const only = txt.trim().match(/-?\d+(?:[.,]\d+)?/);
-            if(only) return Number(only[0].replace(',', '.'));
-          }
-        }catch(err){}
-      }
-      throw new Error('Keine Temperaturantwort erhalten');
-    }
-
-    async function updateTemperature(){
-      const status = $('status'); status.textContent='';
-      const sel = $('deviceSelect');
-      const idx = sel.value;
-      const devices = loadDevices();
-      if(devices.length===0){ status.innerHTML='<span class="error">Keine Geräte konfiguriert.</span>'; return; }
-      const device = devices[idx];
-      $('fetchBtn').disabled = true;
-      try{
-        const t = await fetchTemperatureFrom(device.host);
-        $('tempValue').textContent = (Number.isFinite(t) ? t.toFixed(1) : t) + ' °C';
-        $('lastUpdate').textContent = new Date().toLocaleString();
-        status.textContent = 'Erfolgreich von ' + device.name;
-      }catch(e){
-        status.innerHTML = '<span class="error">Fehler: '+ e.message +'</span>';
-      }finally{
-        $('fetchBtn').disabled = false;
-      }
-    }
-
-    function startAutoPoll(){
-      const ms = Number($('refresh').value);
-      if(pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-      if(ms>0){ pollTimer = setInterval(updateTemperature, ms); }
-    }
-
-    function speakTemperature(){
-      const text = $('tempValue').textContent.replace('°C', 'Grad Celsius');
-      if(!('speechSynthesis' in window)){ alert('Text-to-Speech nicht verfügbar.'); return; }
-      const utter = new SpeechSynthesisUtterance(text + ' — gemessen um ' + $('lastUpdate').textContent);
-      window.speechSynthesis.speak(utter);
-    }
-
-    document.addEventListener('DOMContentLoaded', ()=>{
+<script>
+const $ = id => document.getElementById(id);
+let pollTimer = null;
+const MAX_SENSORS = 5;
+/* 🌐 Geräteverwaltung */
+function loadDevices() {
+  try { return JSON.parse(localStorage.getItem('esp_devices')) || []; }
+  catch { return []; }
+}
+function saveDevices(list) {
+  localStorage.setItem('esp_devices', JSON.stringify(list));
+}
+function renderDeviceOptions() {
+  const sel = $('deviceSelect'); sel.innerHTML = '';
+  const devices = loadDevices();
+  devices.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${d.name} — ${d.host}`;
+    sel.appendChild(opt);
+  });
+  renderDeviceList();
+}
+function renderDeviceList() {
+  const list = $('devicesList'); list.innerHTML = '';
+  loadDevices().forEach((d, i) => {
+    const div = document.createElement('div');
+    div.className = 'device-item';
+    div.innerHTML = `
+      <span>${d.name} (${d.host})</span>
+      <button class="small" data-idx="${i}">Löschen</button>`;
+    div.querySelector('button').addEventListener('click', () => {
+      const devs = loadDevices();
+      devs.splice(i, 1);
+      saveDevices(devs);
       renderDeviceOptions();
-      $('addDevice').addEventListener('click', ()=>{
-        const name = $('newName').value.trim(); const host = $('newIp').value.trim();
-        if(!name || !host){ alert('Bitte Name und IP/Host eingeben.'); return; }
-        const devices = loadDevices(); devices.push({name, host}); saveDevices(devices);
-        $('newName').value=''; $('newIp').value=''; renderDeviceOptions();
-      });
-      $('fetchBtn').addEventListener('click', ()=> updateTemperature());
-      $('speakBtn').addEventListener('click', speakTemperature);
-      $('refresh').addEventListener('change', ()=>{ startAutoPoll(); });
-      if(loadDevices().length===0){
-        const sample = [{name:'ESP Wohnzimmer', host:'192.168.1.42'}];
-        saveDevices(sample); renderDeviceOptions();
-      }
     });
-  </script>
+    list.appendChild(div);
+  });
+}
+
+/* 🌡️ Mehrsensor-Abfrage */
+async function fetchAllTemperatures(host, maxSensors = MAX_SENSORS) {
+  const base = host.startsWith("http") ? host : `http://${host}`;
+  const results = {};
+  let found = 0;
+
+for (let i = 1; i <= MAX_SENSORS; i++) { 
+    const path = i === 1 ? "/temp" : `/temp${i}`;
+    try {
+      const res = await fetch(base + path, { cache: "no-store" });
+      if (!res.ok) break;
+      const txt = await res.text();
+      let val;
+      try {
+        const j = JSON.parse(txt);
+        val = j.temp ?? j.temperature ?? j.t;
+      } catch {
+        const m = txt.trim().match(/-?\\d+(?:[.,]\\d+)?/);
+        if (m) val = parseFloat(m[0].replace(",", "."));
+      }
+      if (typeof val === "number" && !isNaN(val)) {
+        const el = $(`deviceValue${i}`);
+        if (el) el.textContent = `${val.toFixed(1)} °C`;
+        results[i] = val;
+        found++;
+      } else break;
+    } catch {
+      break;
+    }
+  }
+  for (let i = found + 1; i <= maxSensors; i++) {
+    const el = $(`deviceValue${i}`);
+    if (el) el.textContent = "-- °C";
+  }
+  return results;
+}
+
+/* 🔘 Geräte-Commands */
+function setButtonState(id, isOn) {
+  const on = $(`onBtn${id}`);
+  const off = $(`offBtn${id}`);
+  if (isOn) {
+    on.classList.add("active");
+    off.classList.remove("active");
+  } else {
+    off.classList.add("active");
+    on.classList.remove("active");
+  }
+}
+async function sendCommand(sensorId, cmd) {
+  const devices = loadDevices();
+  if (devices.length === 0) {
+    alert("Kein Gerät konfiguriert!");
+    return;
+  }
+  const device = devices[$('deviceSelect').value];
+  const suffix = sensorId > 1 ? sensorId : "";
+  const url = `${device.host.startsWith("http") ? device.host : "http://" + device.host}/${cmd}${suffix}`;
+  $('status').textContent = `Sende Befehl ${cmd}${suffix}...`;
+  setButtonState(sensorId, cmd === "on");
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("ESP nicht erreichbar");
+    $('status').textContent = `OK: ${cmd}${suffix}`;
+	/* ➕ NEU: Nach erfolgreichem "An" sofort Messwert abrufen */
+    if (cmd === "on") {
+      await updateSensorValue(sensorId, device.host);
+    }
+  } catch (err) {
+    $('status').textContent = "Fehler: " + err.message;
+    setTimeout(() => setButtonState(sensorId, false), 1500);
+  }
+}
+/* 🌡️ Einzelwert aktualisieren – NEU hier einfügen */
+async function updateSensorValue(id, host) {
+  const base = host.startsWith("http") ? host : `http://${host}`;
+  const el = $(`deviceValue${id}`);
+
+  try {
+    let endpoint;
+    switch (id) {      
+	  case 1: endpoint = "/temp"; break;
+	  case 2: endpoint = "/motion"; break;
+	  case 3: endpoint = "/light"; break;
+	  case 4: endpoint = "/lamp"; break;
+	  case 5: endpoint = "/temp2"; break;
+	  default: return;
+	}
+
+    const res = await fetch(base + endpoint, { cache: "no-store" });
+    const txt = await res.text();
+
+    let value = "--";
+    try {
+      const j = JSON.parse(txt);
+      if (j.temp !== undefined) value = j.temp.toFixed(1) + " °C";
+      else if (j.light !== undefined) value = j.light + " %";
+      else if (j.motion !== undefined) value = j.motion ? "Bewegung" : "Ruhe";
+    } catch {
+      value = txt;
+    }
+
+    el.textContent = value;
+  } catch (err) {
+    el.textContent = "--";
+  }
+}
+
+/* ⏱️ Timersteuerung */
+function startAutoPoll() {
+  if (pollTimer) clearInterval(pollTimer);
+  const devices = loadDevices();
+  if (devices.length === 0) return;
+  const ms = Number($('refresh').value);
+  if (ms > 0) {
+    const host = devices[$('deviceSelect').value].host;
+    pollTimer = setInterval(() => fetchAllTemperatures(host), ms);
+  }
+}
+
+/* 🚀 Setup */
+document.addEventListener("DOMContentLoaded", () => {
+  renderDeviceOptions();
+  if (loadDevices().length === 0) {
+    saveDevices([{ name: "ESP Wohnzimmer", host: "192.168.1.42" }]);
+    renderDeviceOptions();
+  }
+
+  $('addDevice').addEventListener('click', () => {
+    const name = $('newName').value.trim();
+    const host = $('newIp').value.trim();
+    if (!name || !host) return alert("Bitte Name und IP eingeben!");
+    const list = loadDevices();
+    list.push({ name, host });
+    saveDevices(list);
+    $('newName').value = $('newIp').value = '';
+    renderDeviceOptions();
+  });
+
+  $('fetchAllBtn').addEventListener('click', () => {
+    const devices = loadDevices();
+    if (devices.length === 0) return alert("Kein Gerät vorhanden!");
+    const host = devices[$('deviceSelect').value].host;
+    fetchAllTemperatures(host);
+  });
+  $('refresh').addEventListener('change', startAutoPoll);
+
+  for (let i = 1; i <= MAX_SENSORS; i++)  {
+    setButtonState(i, false);
+    $(`onBtn${i}`).addEventListener('click', () => sendCommand(i, 'on'));
+    $(`offBtn${i}`).addEventListener('click', () => sendCommand(i, 'off'));
+  }
+});
+</script>
 </body>
 </html>
-
