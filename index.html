@@ -87,7 +87,7 @@
 <body>
   <div class="wrap">
     <header class="card">
-      <h1>ESP8266 Multi-Sensor Steuerung</h1>
+      <h1>ESP8266 Multi-Sensor Steuerung V2.3</h1>
       <div class="meta">Wähle dein Gerät und überwache mehrere Sensoren gleichzeitig.</div>
     </header>
 
@@ -108,39 +108,39 @@
 
       <hr>
 
-      <!-- Drei Sensorspalten -->
+      <!-- Sensorspalten -->
       <div id="sensorsArea">
-	  <div class="control-row">
-		<span class="control-title-inline">Sensor 1</span>
-		<button id="onBtn1" class="toggle">An</button>
-		<button id="offBtn1" class="toggle">Aus</button>
-		<span id="deviceValue1" class="value-pill">-- °C</span>
-	  </div>
-	  <div class="control-row">
-		<span class="control-title-inline">Sensor 2</span>
-		<button id="onBtn2" class="toggle">An</button>
-		<button id="offBtn2" class="toggle">Aus</button>
-		<span id="deviceValue2" class="value-pill">--</span>
-	  </div>
-	  <div class="control-row">
-		<span class="control-title-inline">Sensor 3</span>
-		<button id="onBtn3" class="toggle">An</button>
-		<button id="offBtn3" class="toggle">Aus</button>
-		<span id="deviceValue3" class="value-pill">--</span>
-	  </div>
-	  <div class="control-row">
-		<span class="control-title-inline">Sensor 4</span>
-		<button id="onBtn4" class="toggle">An</button>
-		<button id="offBtn4" class="toggle">Aus</button>
-		<span id="deviceValue4" class="value-pill">--</span>
-	  </div>
-	  <div class="control-row">
-		<span class="control-title-inline">Sensor 5</span>
-		<button id="onBtn5" class="toggle">An</button>
-		<button id="offBtn5" class="toggle">Aus</button>
-		<span id="deviceValue5" class="value-pill">--</span>
-	  </div>
-	</div>
+        <div class="control-row">
+          <span class="control-title-inline">Sensor 1</span>
+          <button id="onBtn1" class="toggle">An</button>
+          <button id="offBtn1" class="toggle">Aus</button>
+          <span id="deviceValue1" class="value-pill">-- °C</span>
+        </div>
+        <div class="control-row">
+          <span class="control-title-inline">Sensor 2</span>
+          <button id="onBtn2" class="toggle">An</button>
+          <button id="offBtn2" class="toggle">Aus</button>
+          <span id="deviceValue2" class="value-pill">--</span>
+        </div>
+        <div class="control-row">
+          <span class="control-title-inline">Sensor 3</span>
+          <button id="onBtn3" class="toggle">An</button>
+          <button id="offBtn3" class="toggle">Aus</button>
+          <span id="deviceValue3" class="value-pill">--</span>
+        </div>
+        <div class="control-row">
+          <span class="control-title-inline">Sensor 4</span>
+          <button id="onBtn4" class="toggle">An</button>
+          <button id="offBtn4" class="toggle">Aus</button>
+          <span id="deviceValue4" class="value-pill">--</span>
+        </div>
+        <div class="control-row">
+          <span class="control-title-inline">Sensor 5</span>
+          <button id="onBtn5" class="toggle">An</button>
+          <button id="offBtn5" class="toggle">Aus</button>
+          <span id="deviceValue5" class="value-pill">--</span>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -160,6 +160,7 @@
 const $ = id => document.getElementById(id);
 let pollTimer = null;
 const MAX_SENSORS = 5;
+
 /* 🌐 Geräteverwaltung */
 function loadDevices() {
   try { return JSON.parse(localStorage.getItem('esp_devices')) || []; }
@@ -201,9 +202,7 @@ function renderDeviceList() {
 async function fetchAllTemperatures(host, maxSensors = MAX_SENSORS) {
   const base = host.startsWith("http") ? host : `http://${host}`;
   const results = {};
-  let found = 0;
-
-for (let i = 1; i <= MAX_SENSORS; i++) { 
+  for (let i = 1; i <= maxSensors; i++) { 
     const path = i === 1 ? "/temp" : `/temp${i}`;
     try {
       const res = await fetch(base + path, { cache: "no-store" });
@@ -220,21 +219,12 @@ for (let i = 1; i <= MAX_SENSORS; i++) {
       if (typeof val === "number" && !isNaN(val)) {
         const el = $(`deviceValue${i}`);
         if (el) el.textContent = `${val.toFixed(1)} °C`;
-        results[i] = val;
-        found++;
       } else break;
-    } catch {
-      break;
-    }
+    } catch { break; }
   }
-  for (let i = found + 1; i <= maxSensors; i++) {
-    const el = $(`deviceValue${i}`);
-    if (el) el.textContent = "-- °C";
-  }
-  return results;
 }
 
-/* 🔘 Geräte-Commands */
+/* 🔘 Buttonstatus */
 function setButtonState(id, isOn) {
   const on = $(`onBtn${id}`);
   const off = $(`offBtn${id}`);
@@ -246,6 +236,8 @@ function setButtonState(id, isOn) {
     on.classList.remove("active");
   }
 }
+
+/* 🛰️ Befehl senden */
 async function sendCommand(sensorId, cmd) {
   const devices = loadDevices();
   if (devices.length === 0) {
@@ -257,55 +249,78 @@ async function sendCommand(sensorId, cmd) {
   const url = `${device.host.startsWith("http") ? device.host : "http://" + device.host}/${cmd}${suffix}`;
   $('status').textContent = `Sende Befehl ${cmd}${suffix}...`;
   setButtonState(sensorId, cmd === "on");
+
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error("ESP nicht erreichbar");
     $('status').textContent = `OK: ${cmd}${suffix}`;
-	/* ➕ NEU: Nach erfolgreichem "An" sofort Messwert abrufen */
-    if (cmd === "on") {
-      await updateSensorValue(sensorId, device.host);
-    }
+    if (cmd === "on" || cmd === "off") await updateSensorValue(sensorId, device.host, cmd);
   } catch (err) {
     $('status').textContent = "Fehler: " + err.message;
     setTimeout(() => setButtonState(sensorId, false), 1500);
   }
+  if (cmd === "off") {
+  const el = document.getElementById(`deviceValue${sensorId}`);
+  if (el) el.textContent = "--";
 }
-/* 🌡️ Einzelwert aktualisieren – NEU hier einfügen */
-async function updateSensorValue(id, host) {
+  
+  
+}  // ✅ sendCommand korrekt geschlossen!
+
+/* 🌡️ Einzelwert aktualisieren */
+/* 🌡️ Einzelwert aktualisieren – DHT22 zeigt Temp + Luftfeuchte, bei "Aus" wird zurückgesetzt */
+async function updateSensorValue(id, host, cmd = "") {
   const base = host.startsWith("http") ? host : `http://${host}`;
   const el = $(`deviceValue${id}`);
+
+  // 👇 Wenn "off" gesendet wurde → direkt Anzeige leeren
+  if (cmd === "off") {
+    el.textContent = "--";
+    return;
+  }
 
   try {
     let endpoint;
     switch (id) {      
-	  case 1: endpoint = "/temp"; break;
-	  case 2: endpoint = "/motion"; break;
-	  case 3: endpoint = "/light"; break;
-	  case 4: endpoint = "/lamp"; break;
-	  case 5: endpoint = "/temp2"; break;
-	  default: return;
-	}
+      case 1: endpoint = "/on"; break;       // DHT22 (Temp + Hum)
+      case 2: endpoint = "/on2"; break;      // Licht
+      case 3: endpoint = "/on3"; break;      // Bewegung
+      case 4: endpoint = "/on4"; break;      // Relais
+      case 5: endpoint = "/on5"; break;      // Option
+      default: return;
+    }
 
     const res = await fetch(base + endpoint, { cache: "no-store" });
+    if (!res.ok) throw new Error("ESP nicht erreichbar");
     const txt = await res.text();
 
     let value = "--";
     try {
       const j = JSON.parse(txt);
-      if (j.temp !== undefined) value = j.temp.toFixed(1) + " °C";
-      else if (j.light !== undefined) value = j.light + " %";
-      else if (j.motion !== undefined) value = j.motion ? "Bewegung" : "Ruhe";
+
+      // 🌡️ DHT22 Temperatur + Luftfeuchtigkeit
+      if (j.temp1 !== undefined && j.hum1 !== undefined) {
+        value = `${j.temp1.toFixed(1)} °C / ${j.hum1.toFixed(0)} % LF`;
+      }
+      else if (j.temp1 !== undefined) value = `${j.temp1.toFixed(1)} °C`;
+      else if (j.light2 !== undefined) value = `${j.light2} %`;
+      else if (j.motion3 !== undefined) value = j.motion3 ? "Bewegung" : "Ruhe";
+      else if (j.option5 !== undefined) value = j.option5;
+      else if (txt.trim() === "on") value = "An";
+      else if (txt.trim() === "off") value = "Aus";
     } catch {
-      value = txt;
+      value = txt.trim();
     }
 
     el.textContent = value;
   } catch (err) {
+    console.error(`❌ Fehler bei Sensor ${id}:`, err.message);
     el.textContent = "--";
   }
 }
 
-/* ⏱️ Timersteuerung */
+
+/* ⏱️ Auto-Refresh */
 function startAutoPoll() {
   if (pollTimer) clearInterval(pollTimer);
   const devices = loadDevices();
